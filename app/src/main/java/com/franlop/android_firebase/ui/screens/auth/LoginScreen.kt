@@ -1,10 +1,12 @@
 package com.franlop.android_firebase.ui.screens.auth
 
+import android.app.Activity
 import android.content.Context
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,6 +52,8 @@ import com.franlop.android_firebase.ui.theme.Purple40
 import com.franlop.android_firebase.utils.AnalyticsManager
 import com.franlop.android_firebase.utils.AuthManager
 import com.franlop.android_firebase.utils.AuthRes
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.launch
 
 @Composable
@@ -65,6 +69,47 @@ fun LoginScreen(
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            when (val accountResult = auth.handleSignInResult(task)) {
+                is AuthRes.Success -> {
+                    val credential = GoogleAuthProvider.getCredential(
+                        accountResult.data.idToken,
+                        null
+                    )
+                    scope.launch {
+                        when (val firebaseResult = auth.signInWithGoogleCredential(credential)) {
+                            is AuthRes.Success -> {
+                                analytics.logButtonClicked("Click: Continuar con Google")
+                                navigation.navigate(Routes.Home.route) {
+                                    popUpTo(Routes.Login.route) { inclusive = true }
+                                }
+                            }
+                            is AuthRes.Error -> {
+                                Toast.makeText(
+                                    context,
+                                    "Error Firebase: ${firebaseResult.errorMessage}",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                    }
+                }
+                is AuthRes.Error -> {
+                    Toast.makeText(
+                        context,
+                        "Error Google: ${accountResult.errorMessage}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+                null -> Unit
+            }
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         ClickableText(
@@ -174,7 +219,7 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(15.dp))
         SocialMediaButton(
             onClick = {
-                // Aquí irá el inicio de sesión con Google (Módulo 5)
+                auth.signInWithGoogle(googleSignInLauncher)
             },
             text = "Continuar con Google",
             icon = R.drawable.ic_google,
@@ -210,12 +255,9 @@ private suspend fun emailPassSignIn(
 
 @Composable
 fun SocialMediaButton(onClick: () -> Unit, text: String, icon: Int, color: Color) {
-    var click by remember { mutableStateOf(false) }
     Surface(
         onClick = onClick,
-        modifier = Modifier
-            .padding(start = 40.dp, end = 40.dp)
-            .clickable { click = !click },
+        modifier = Modifier.padding(start = 40.dp, end = 40.dp),
         shape = RoundedCornerShape(50),
         border = BorderStroke(
             width = 1.dp,
@@ -241,7 +283,6 @@ fun SocialMediaButton(onClick: () -> Unit, text: String, icon: Int, color: Color
                 text = text,
                 color = if (icon == R.drawable.ic_incognito) Color.White else Color.Black
             )
-            click = true
         }
     }
 }
