@@ -1,5 +1,6 @@
 package com.franlop.android_firebase.ui.screens.auth
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,9 +31,16 @@ import androidx.navigation.NavController
 import com.franlop.android_firebase.ui.navigation.Routes
 import com.franlop.android_firebase.ui.theme.Purple40
 import com.franlop.android_firebase.utils.AnalyticsManager
+import com.franlop.android_firebase.utils.AuthManager
+import com.franlop.android_firebase.utils.AuthRes
+import kotlinx.coroutines.launch
 
 @Composable
-fun ForgotPasswordScreen(analytics: AnalyticsManager, navigation: NavController) {
+fun ForgotPasswordScreen(
+    analytics: AnalyticsManager,
+    auth: AuthManager,
+    navigation: NavController
+) {
     analytics.logScreenView(screenName = Routes.ForgotPassword.route)
 
     val context = LocalContext.current
@@ -42,25 +50,47 @@ fun ForgotPasswordScreen(analytics: AnalyticsManager, navigation: NavController)
 
     Column(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Top,
+        verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = "Olvidó su contraseña",
-            style = TextStyle(fontSize = 40.sp, color = Purple40)
+            style = TextStyle(fontSize = 32.sp, color = Purple40)
         )
         Spacer(modifier = Modifier.height(50.dp))
         TextField(
             label = { Text(text = "Correo electrónico") },
             value = email,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            onValueChange = { email = it })
+            onValueChange = { email = it }
+        )
 
         Spacer(modifier = Modifier.height(30.dp))
         Box(modifier = Modifier.padding(40.dp, 0.dp, 40.dp, 0.dp)) {
             Button(
                 onClick = {
-
+                    scope.launch {
+                        when (val res = auth.resetPassword(email.trim())) {
+                            is AuthRes.Success -> {
+                                analytics.logButtonClicked("Click: Recuperar contraseña")
+                                Toast.makeText(
+                                    context,
+                                    "Correo enviado",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                navigation.navigate(Routes.Login.route) {
+                                    popUpTo(Routes.Login.route) { inclusive = true }
+                                }
+                            }
+                            is AuthRes.Error -> {
+                                Toast.makeText(
+                                    context,
+                                    "Error: ${res.errorMessage}",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                    }
                 },
                 shape = RoundedCornerShape(50.dp),
                 modifier = Modifier

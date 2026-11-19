@@ -1,5 +1,6 @@
 package com.franlop.android_firebase.ui.screens.auth
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,9 +36,16 @@ import androidx.navigation.NavController
 import com.franlop.android_firebase.ui.navigation.Routes
 import com.franlop.android_firebase.ui.theme.Purple40
 import com.franlop.android_firebase.utils.AnalyticsManager
+import com.franlop.android_firebase.utils.AuthManager
+import com.franlop.android_firebase.utils.AuthRes
+import kotlinx.coroutines.launch
 
 @Composable
-fun SignUpScreen(analytics: AnalyticsManager, navigation: NavController) {
+fun SignUpScreen(
+    analytics: AnalyticsManager,
+    auth: AuthManager,
+    navigation: NavController
+) {
     analytics.logScreenView(screenName = Routes.SignUp.route)
 
     val context = LocalContext.current
@@ -60,7 +68,8 @@ fun SignUpScreen(analytics: AnalyticsManager, navigation: NavController) {
             label = { Text(text = "Correo electrónico") },
             value = email,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            onValueChange = { email = it })
+            onValueChange = { email = it }
+        )
 
         Spacer(modifier = Modifier.height(20.dp))
         TextField(
@@ -68,13 +77,16 @@ fun SignUpScreen(analytics: AnalyticsManager, navigation: NavController) {
             value = password,
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            onValueChange = { password = it })
+            onValueChange = { password = it }
+        )
 
         Spacer(modifier = Modifier.height(30.dp))
         Box(modifier = Modifier.padding(40.dp, 0.dp, 40.dp, 0.dp)) {
             Button(
                 onClick = {
-
+                    scope.launch {
+                        signUp(email.trim(), password, auth, analytics, context, navigation)
+                    }
                 },
                 shape = RoundedCornerShape(50.dp),
                 modifier = Modifier
@@ -98,5 +110,29 @@ fun SignUpScreen(analytics: AnalyticsManager, navigation: NavController) {
                 color = Purple40
             )
         )
+    }
+}
+
+private suspend fun signUp(
+    email: String,
+    password: String,
+    auth: AuthManager,
+    analytics: AnalyticsManager,
+    context: android.content.Context,
+    navigation: NavController
+) {
+    if (email.isNotEmpty() && password.isNotEmpty()) {
+        when (val result = auth.createUserWithEmailAndPassword(email, password)) {
+            is AuthRes.Success -> {
+                analytics.logButtonClicked("Click: Registrarse")
+                Toast.makeText(context, "Registro exitoso", Toast.LENGTH_SHORT).show()
+                navigation.popBackStack()
+            }
+            is AuthRes.Error -> {
+                Toast.makeText(context, "Error: ${result.errorMessage}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    } else {
+        Toast.makeText(context, "Existen campos vacíos", Toast.LENGTH_SHORT).show()
     }
 }

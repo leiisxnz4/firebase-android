@@ -1,5 +1,6 @@
 package com.franlop.android_firebase.ui.screens.auth
 
+import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -117,7 +118,9 @@ fun LoginScreen(
         Box(modifier = Modifier.padding(40.dp, 0.dp, 40.dp, 0.dp)) {
             Button(
                 onClick = {
-                    // Aquí irá el inicio de sesión con correo/contraseña (Módulo 4)
+                    scope.launch {
+                        emailPassSignIn(email.trim(), password, auth, analytics, context, navigation)
+                    }
                 },
                 shape = RoundedCornerShape(50.dp),
                 modifier = Modifier
@@ -131,9 +134,7 @@ fun LoginScreen(
         ClickableText(
             text = AnnotatedString("¿Olvidaste tu contraseña?"),
             onClick = {
-                navigation.navigate(Routes.ForgotPassword.route) {
-                    popUpTo(Routes.Login.route) { inclusive = true }
-                }
+                navigation.navigate(Routes.ForgotPassword.route)
                 analytics.logButtonClicked("Click: ¿Olvidaste tu contraseña?")
             },
             style = TextStyle(
@@ -179,6 +180,31 @@ fun LoginScreen(
             icon = R.drawable.ic_google,
             color = Color(0xFFF1F1F1)
         )
+    }
+}
+
+private suspend fun emailPassSignIn(
+    email: String,
+    password: String,
+    auth: AuthManager,
+    analytics: AnalyticsManager,
+    context: Context,
+    navigation: NavController
+) {
+    if (email.isNotEmpty() && password.isNotEmpty()) {
+        when (val result = auth.signInWithEmailAndPassword(email, password)) {
+            is AuthRes.Success -> {
+                analytics.logButtonClicked("Click: Iniciar Sesión")
+                navigation.navigate(Routes.Home.route) {
+                    popUpTo(Routes.Login.route) { inclusive = true }
+                }
+            }
+            is AuthRes.Error -> {
+                Toast.makeText(context, "Error: ${result.errorMessage}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    } else {
+        Toast.makeText(context, "Existen campos vacíos", Toast.LENGTH_SHORT).show()
     }
 }
 
