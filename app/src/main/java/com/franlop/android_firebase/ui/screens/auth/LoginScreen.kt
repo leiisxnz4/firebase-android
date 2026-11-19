@@ -1,5 +1,6 @@
 package com.franlop.android_firebase.ui.screens.auth
 
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -26,10 +27,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
@@ -44,17 +47,23 @@ import com.franlop.android_firebase.R
 import com.franlop.android_firebase.ui.navigation.Routes
 import com.franlop.android_firebase.ui.theme.Purple40
 import com.franlop.android_firebase.utils.AnalyticsManager
+import com.franlop.android_firebase.utils.AuthManager
+import com.franlop.android_firebase.utils.AuthRes
+import kotlinx.coroutines.launch
 
 @Composable
-fun LoginScreen(analytics: AnalyticsManager, navigation: NavController) {
+fun LoginScreen(
+    analytics: AnalyticsManager,
+    auth: AuthManager,
+    navigation: NavController
+) {
     analytics.logScreenView(screenName = Routes.Login.route)
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
-
-
-
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     Box(modifier = Modifier.fillMaxSize()) {
         ClickableText(
@@ -87,25 +96,28 @@ fun LoginScreen(analytics: AnalyticsManager, navigation: NavController) {
         Spacer(modifier = Modifier.height(10.dp))
         Text(
             text = "Firebase Android",
-            style = TextStyle(fontSize = 30.sp))
+            style = TextStyle(fontSize = 30.sp)
+        )
         Spacer(modifier = Modifier.height(30.dp))
         TextField(
             label = { Text(text = "Correo electrónico") },
             value = email,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            onValueChange = { email = it })
+            onValueChange = { email = it }
+        )
         Spacer(modifier = Modifier.height(10.dp))
         TextField(
             label = { Text(text = "Contraseña") },
             value = password,
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            onValueChange = { password = it })
+            onValueChange = { password = it }
+        )
         Spacer(modifier = Modifier.height(20.dp))
         Box(modifier = Modifier.padding(40.dp, 0.dp, 40.dp, 0.dp)) {
             Button(
                 onClick = {
-
+                    // Aquí irá el inicio de sesión con correo/contraseña (Módulo 4)
                 },
                 shape = RoundedCornerShape(50.dp),
                 modifier = Modifier
@@ -136,7 +148,23 @@ fun LoginScreen(analytics: AnalyticsManager, navigation: NavController) {
         Spacer(modifier = Modifier.height(25.dp))
         SocialMediaButton(
             onClick = {
-
+                scope.launch {
+                    when (val result = auth.signInAnonymously()) {
+                        is AuthRes.Success -> {
+                            analytics.logButtonClicked("Click: Continuar como invitado")
+                            navigation.navigate(Routes.Home.route) {
+                                popUpTo(Routes.Login.route) { inclusive = true }
+                            }
+                        }
+                        is AuthRes.Error -> {
+                            Toast.makeText(
+                                context,
+                                "Error: ${result.errorMessage}",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                }
             },
             text = "Continuar como invitado",
             icon = R.drawable.ic_incognito,
@@ -145,7 +173,7 @@ fun LoginScreen(analytics: AnalyticsManager, navigation: NavController) {
         Spacer(modifier = Modifier.height(15.dp))
         SocialMediaButton(
             onClick = {
-
+                // Aquí irá el inicio de sesión con Google (Módulo 5)
             },
             text = "Continuar con Google",
             icon = R.drawable.ic_google,
@@ -154,20 +182,25 @@ fun LoginScreen(analytics: AnalyticsManager, navigation: NavController) {
     }
 }
 
-
-
 @Composable
-fun SocialMediaButton(onClick: () -> Unit, text: String, icon: Int, color: Color, ) {
+fun SocialMediaButton(onClick: () -> Unit, text: String, icon: Int, color: Color) {
     var click by remember { mutableStateOf(false) }
     Surface(
         onClick = onClick,
-        modifier = Modifier.padding(start = 40.dp, end = 40.dp).clickable { click = !click },
+        modifier = Modifier
+            .padding(start = 40.dp, end = 40.dp)
+            .clickable { click = !click },
         shape = RoundedCornerShape(50),
-        border = BorderStroke(width = 1.dp, color = if(icon == R.drawable.ic_incognito) color else Color.Gray),
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (icon == R.drawable.ic_incognito) color else Color.Gray
+        ),
         color = color
     ) {
         Row(
-            modifier = Modifier.padding(start = 12.dp, end = 16.dp, top = 12.dp, bottom = 12.dp).fillMaxWidth(),
+            modifier = Modifier
+                .padding(start = 12.dp, end = 16.dp, top = 12.dp, bottom = 12.dp)
+                .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
@@ -178,7 +211,10 @@ fun SocialMediaButton(onClick: () -> Unit, text: String, icon: Int, color: Color
                 tint = Color.Unspecified
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text(text = "$text", color = if(icon == R.drawable.ic_incognito) Color.White else Color.Black)
+            Text(
+                text = text,
+                color = if (icon == R.drawable.ic_incognito) Color.White else Color.Black
+            )
             click = true
         }
     }

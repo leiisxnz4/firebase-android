@@ -16,8 +16,8 @@ import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.ExitToApp
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationBar
@@ -38,7 +38,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -57,20 +56,31 @@ import com.franlop.android_firebase.ui.navigation.Routes
 import com.franlop.android_firebase.ui.screens.login.ContactsScreen
 import com.franlop.android_firebase.ui.screens.login.NotesScreen
 import com.franlop.android_firebase.utils.AnalyticsManager
+import com.franlop.android_firebase.utils.AuthManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(analytics: AnalyticsManager, navigation: NavController) {
+fun HomeScreen(
+    analytics: AnalyticsManager,
+    auth: AuthManager,
+    navigation: NavController
+) {
     analytics.logScreenView(screenName = Routes.Home.route)
     val navController = rememberNavController()
+    val user = auth.getCurrentUser()
 
     var showDialog by remember { mutableStateOf(false) }
 
     val onLogoutConfirmed: () -> Unit = {
-
+        auth.signOut()
+        navigation.navigate(Routes.Login.route) {
+            popUpTo(Routes.Home.route) {
+                inclusive = true
+            }
+        }
     }
 
-    Scaffold (
+    Scaffold(
         topBar = {
             TopAppBar(
                 title = {
@@ -78,21 +88,43 @@ fun HomeScreen(analytics: AnalyticsManager, navigation: NavController) {
                         horizontalArrangement = Arrangement.Start,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-
-
+                        if (user?.photoUrl != null) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(user.photoUrl)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Imagen",
+                                placeholder = painterResource(id = R.drawable.profile),
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .size(40.dp)
+                            )
+                        } else {
+                            Image(
+                                painter = painterResource(R.drawable.profile),
+                                contentDescription = "Foto de perfil por defecto",
+                                modifier = Modifier
+                                    .padding(end = 8.dp)
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                            )
+                        }
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
                             Text(
-                                text = "Bienvenidx",
+                                text = if (!user?.displayName.isNullOrEmpty()) "Hola ${user?.displayName}" else "Bienvenidx",
                                 fontSize = 20.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                             Text(
-                                text = "Usuario",
+                                text = if (!user?.email.isNullOrEmpty()) "${user?.email}" else "Anónimo (${user?.uid?.take(8) ?: ""})",
                                 fontSize = 12.sp,
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis)
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
                     }
                 },
@@ -111,13 +143,16 @@ fun HomeScreen(analytics: AnalyticsManager, navigation: NavController) {
         bottomBar = {
             BottomBar(navController = navController)
         }
-    ){ contentPadding ->
+    ) { contentPadding ->
         Box(modifier = Modifier.padding(contentPadding)) {
             if (showDialog) {
-                LogoutDialog(onConfirmLogout = {
-                    onLogoutConfirmed()
-                    showDialog = false
-                }, onDismiss = { showDialog = false })
+                LogoutDialog(
+                    onConfirmLogout = {
+                        onLogoutConfirmed()
+                        showDialog = false
+                    },
+                    onDismiss = { showDialog = false }
+                )
             }
             BottomNavGraph(navController = navController)
         }
@@ -169,7 +204,11 @@ fun BottomBar(navController: NavHostController) {
 }
 
 @Composable
-fun RowScope.AddItem(screens: BottomNavScreen, currentDestination: NavDestination, navController: NavHostController) {
+fun RowScope.AddItem(
+    screens: BottomNavScreen,
+    currentDestination: NavDestination,
+    navController: NavHostController
+) {
     NavigationBarItem(
         label = { Text(text = screens.title) },
         icon = { Icon(imageVector = screens.icon, contentDescription = "Icons") },
@@ -203,6 +242,7 @@ sealed class BottomNavScreen(val route: String, val title: String, val icon: Ima
         title = "Contactos",
         icon = Icons.Default.Person
     )
+
     object Note : BottomNavScreen(
         route = "notes",
         title = "Notas",
