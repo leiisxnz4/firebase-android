@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -14,19 +15,23 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.ExitToApp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,6 +64,7 @@ import com.franlop.android_firebase.utils.AnalyticsManager
 import com.franlop.android_firebase.utils.AuthManager
 import com.franlop.android_firebase.utils.FirestoreManager
 import com.franlop.android_firebase.utils.RealtimeManager
+import com.franlop.android_firebase.utils.RemoteConfigManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,8 +79,14 @@ fun HomeScreen(
     val context = LocalContext.current
     val firestore = remember { FirestoreManager(context) }
     val realtime = remember { RealtimeManager(context) }
+    val remoteConfig = remember { RemoteConfigManager() }
 
     var showDialog by remember { mutableStateOf(false) }
+    var bannerMessage by remember { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
+        bannerMessage = remoteConfig.fetchAndActivate()
+    }
 
     val onLogoutConfirmed: () -> Unit = {
         auth.signOut()
@@ -137,6 +149,16 @@ fun HomeScreen(
                 actions = {
                     IconButton(
                         onClick = {
+                            throw RuntimeException("Prueba de Crashlytics - Leilani")
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = "Probar Crashlytics"
+                        )
+                    }
+                    IconButton(
+                        onClick = {
                             showDialog = true
                         }
                     ) {
@@ -159,11 +181,25 @@ fun HomeScreen(
                     onDismiss = { showDialog = false }
                 )
             }
-            BottomNavGraph(
-                navController = navController,
-                firestore = firestore,
-                realtime = realtime
-            )
+            Column {
+                if (bannerMessage.isNotEmpty()) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = bannerMessage,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+                BottomNavGraph(
+                    navController = navController,
+                    firestore = firestore,
+                    realtime = realtime
+                )
+            }
         }
     }
 }

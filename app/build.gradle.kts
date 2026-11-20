@@ -3,6 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     alias(libs.plugins.kotlin.compose)
     id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
 }
 
 android {
@@ -67,6 +68,7 @@ dependencies {
     implementation("com.google.firebase:firebase-database")
     implementation("com.google.firebase:firebase-storage")
     implementation("com.google.firebase:firebase-config")
+    implementation("com.google.firebase:firebase-crashlytics")
 
     implementation("androidx.navigation:navigation-compose:2.8.0")
     implementation("io.coil-kt:coil-compose:2.4.0")
