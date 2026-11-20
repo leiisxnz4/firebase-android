@@ -1,5 +1,9 @@
 package com.franlop.android_firebase.ui.screens
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -84,8 +88,16 @@ fun HomeScreen(
     var showDialog by remember { mutableStateOf(false) }
     var bannerMessage by remember { mutableStateOf("") }
 
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { }
+    )
+
     LaunchedEffect(Unit) {
         bannerMessage = remoteConfig.fetchAndActivate()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
 
     val onLogoutConfirmed: () -> Unit = {
